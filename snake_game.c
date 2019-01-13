@@ -1,56 +1,22 @@
 #include <stdio.h>
-#include <ncurses.h>
-#include <string.h>
-#include <stdlib.h>
-
-// MACROS
-#define WIDTH 50
-#define HEIGHT 20
-
-
-// STRUCTURES
-typedef struct _snake_body
-{
-	int pos_x;
-	int pos_y;
-	char body; // '>', '<', '^', 'V'
-	
-} Snake_Body;
-
-typedef struct _snake
-{
-	char direction; // D, U, R, L (Down, Up, Right, Left)
-	int size;
-	Snake_Body* Body;
-} Snake;
-
-
-// FUNCTIONS
-void print_table(WINDOW*, char**, Snake*);
-char** create_table(int, int, char);
-Snake create_snake(int, int);
-void insert_snake(char**, Snake*);
-bool isGameOver(Snake*);
-void movement_snake(Snake*);
+#include "snakelib.h"
 
 int main()
 {
-	initscr();
-	clear();
-	noecho();
-	// cbreak(); // Line buffering disabled, pass on everything
-	curs_set(0); // disable blink cursor
+	// setting the window config
+	initscreen();
 
 	int startx, starty = 0;
 	getmaxyx(stdscr, starty, startx);
 
-	// Creating a main window and centering
+	// Creating a centralized window
 	WINDOW* main_win = newwin(HEIGHT, WIDTH, starty/5, (startx-WIDTH)/2);
 
-	// geting arrow keys
+	// Enabling the arrows keys
 	keypad(main_win, TRUE);
 
-	char msg[] = "Use as setas ou 'ASDW' para jogar";
+	// Printing a string in the window and refreshing
+	char msg[] = "Use the arrow keys or 'ASDW' to play";
 	mvprintw(1, (startx-strlen(msg))/2, "%s", msg);
 	refresh();
 
@@ -62,16 +28,24 @@ int main()
 
 	print_table(main_win, table, &snake);
 
-	int c;
+	int pressedKey;
+	
+	Food_Position food = generate_food(table, foodIcon);
+
 	while(TRUE)
 	{
+		mvprintw(3, (startx-9)/2, "Points: %d", points);
+
 		if(isGameOver(&snake)) break;
 
-		c = wgetch(main_win);
+		if(table[food.pos_y][food.pos_x] != foodIcon)
+			food = generate_food(table, foodIcon);
 
-		halfdelay(1);
+		pressedKey = wgetch(main_win);
 
-		switch(c)
+		halfdelay(5);
+
+		switch(pressedKey)
 		{
 			case 83: // 'S'
 			case 115: // 's'
@@ -103,155 +77,18 @@ int main()
 
 		}
 
-		movement_snake(&snake);
-
+		movement_snake(&snake, table);
 		print_table(main_win, table, &snake);
-
 		refresh();
 	}
 
-	// clrtoeol();
-	refresh();
 	endwin();
+
+	for(int i=0; i<100; i++)
+		printf("\n");
 
 	printf("Game Over!\n");
 
 	return 0;
 }
 
-void movement_snake(Snake* snake)
-{
-	int delta_y=0, delta_x=0;
-
-	switch(snake->direction)
-	{
-		case 'D':
-			snake->Body[0].body = 'V';
-			delta_y = +1;
-		break;
-
-		case 'U':
-			snake->Body[0].body = '^';
-			delta_y = -1;
-			break;
-
-		case 'R':
-			snake->Body[0].body = '>';
-			delta_x = 1;
-			break;
-
-		case 'L':
-			snake->Body[0].body = '<';
-			delta_x = -1;
-			break;
-	}
-
-	snake->Body[0].pos_x += delta_x;
-	snake->Body[0].pos_y += delta_y;
-	
-	for(int i=1; i<snake->size; i++)
-	{
-		snake->Body[i].pos_x = snake->Body[i-1].pos_x - delta_x;
-		snake->Body[i].pos_y = snake->Body[i-1].pos_y - delta_y;
-		snake->Body[i].body = snake->Body[i-1].body;
-	}
-
-}
-
-bool isGameOver(Snake* snake)
-{
-	// eat itself
-	for(int i=1; i<snake->size; i++)
-	{
-		if( snake->Body[0].pos_x == snake->Body[i].pos_x && 
-			snake->Body[0].pos_y == snake->Body[i].pos_y)
-			return TRUE;
-	}
-
-	// out of table
-	if(snake->Body[0].pos_x < 0 ||  snake->Body[0].pos_y < 0)
-		return TRUE;
-
-	// out of table
-	if(snake->Body[0].pos_x >= WIDTH)
-		return TRUE;
-
-	// out of table
-	if(snake->Body[0].pos_y >= HEIGHT)
-		return TRUE;
-
-	return FALSE;
-}
-
-// print table
-void print_table(WINDOW* main_win, char** table, Snake* snake)
-{
-	box(main_win, 0, 0);
-
-	insert_snake(table, snake);
-
-	// print table
-	for(int y=0; y<HEIGHT; y++)
-		for(int x=0; x<WIDTH; x++)
-		{
-			mvwprintw(main_win, y, x, "%c", table[y][x]);
-		}
-
-	wrefresh(main_win);
-}
-
-void insert_snake(char** table, Snake* snake)
-{
-	for(int i=0; i<HEIGHT; i++)
-		for(int j=0; j<WIDTH; j++)
-			table[i][j] = '.';
-
-	// put snake on the table
-	for(int i=0; i<snake->size; i++)
-	{
-		table[snake->Body[i].pos_y][snake->Body[i].pos_x] = snake->Body[i].body;
-	}
-}
-
-char** create_table(int height, int width, char aux)
-{
-	char** table = (char**) malloc(height * sizeof(char*));
-
-	for(int y=0; y<height; y++)
-	{
-		table[y] = (char*) malloc((width) * sizeof(char));
-
-		for(int x=0; x<width; x++)
-		{
-			table[y][x] = aux;
-		}
-	}
-
-	return table;
-}
-
-Snake create_snake(int height, int width)
-{
-	Snake snake;
-
-	snake.size = 0;
-	snake.direction = 'R';
-
-	snake.Body = (Snake_Body*) malloc(3*sizeof(Snake_Body));
-
-	for(int i=0; i<3; i++)
-	{
-		snake.Body[i].pos_x = (width/2) - i;
-		snake.Body[i].pos_y = (height/2);
-
-		if(i==0)
-			snake.Body[i].body = '>';
-
-		else
-			snake.Body[i].body = '>';
-
-		snake.size++;
-	}
-
-	return snake;
-}
