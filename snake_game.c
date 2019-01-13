@@ -43,7 +43,7 @@ int main()
 
 		pressedKey = wgetch(main_win);
 
-		halfdelay(5);
+		halfdelay(1);
 
 		switch(pressedKey)
 		{
