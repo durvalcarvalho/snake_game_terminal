@@ -1,5 +1,10 @@
 Snake Game on Terminal
 
+<p align="center">
+  <img src="snake.gif">
+</p>
+
+
 This project was made with the object to learn more about C language and game programing.
 
 The challenge was to develop an interactive game on Linux terminal only using C language.
